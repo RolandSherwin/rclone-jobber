@@ -1,0 +1,12 @@
+job1:
+    source:
+        linux: /mnt/local-disk-d/New-Folder-2/
+        windows: E:\New-Folder-2
+    dest: daily-backup-crypt:/new_folder_2/
+    options: --fast-list -v --progress --transfers=30 --checkers=40 --copy-links
+    log_path:
+        windows: C:\Users\roland\Downloads\gg.txt
+        linux: /home/roland/Downloads/gg.txt
+    filters:
+        - "- Recovery/"
+        - "+ Recovery/"
