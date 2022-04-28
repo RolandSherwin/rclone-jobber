@@ -7,5 +7,5 @@ edition = "2021"
 
 [dependencies]
 structopt = "0.3"
-serde = "1.0"
 serde_yaml = "0.8"
+subprocess = "0.2.8"

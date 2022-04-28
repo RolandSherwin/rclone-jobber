@@ -55,6 +55,40 @@ pub(crate) enum RcloneActions {
     SYNC,
 }
 
+impl Job {
+    pub(crate) fn source_str(&self) -> String {
+        self.source
+            .to_str()
+            .graceful("can't convert 'Job.source' to str")
+            .to_string()
+    }
+    pub(crate) fn destination_str(&self) -> String {
+        self.destination
+            .to_str()
+            .graceful("can't convert 'Job.destination' to str")
+            .to_string()
+    }
+    pub(crate) fn log_path_str(&self) -> Option<String> {
+        if let Some(path) = &self.log_path {
+            Some(
+                path.to_str()
+                    .graceful("can't convert 'Job.log_path' to str")
+                    .to_string(),
+            )
+        } else {
+            // call unwrap if you have checked Some(path) before calling this function
+            None
+        }
+    }
+    pub(crate) fn filters_str(&self) -> Option<String> {
+        if let Some(filters) = &self.filters {
+            Some(filters.join(" "))
+        } else {
+            None
+        }
+    }
+}
+
 // To be used in StructOpt in args, we have to implement the trait FromStr for
 // the enum - https://stackoverflow.com/questions/54687403/how-can-i-use-enums-in-structopt
 // any error type implementing Display is acceptable.
