@@ -43,11 +43,10 @@ pub(crate) struct Job {
     pub filters: Option<Vec<String>>,
 }
 
-// pub(crate) enum PathField {
-//     Linux(PathBuf),
-//     Windows(PathBuf),
-//     Remote(PathBuf),
-// }
+pub(crate) enum PathType {
+    Local(PathBuf),
+    Remote(PathBuf),
+}
 
 #[derive(Debug)]
 pub(crate) enum RcloneActions {

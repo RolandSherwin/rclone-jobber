@@ -27,7 +27,7 @@ fn main() {
 
 fn get_command(job: &Job, rclone_exe: &PathBuf, action: &RcloneActions) {
     // let gg: std::string::String = String::new();
-    let mut command: std::process::Command = Command::new(rclone_exe.to_str().unwrap().clone());
+    let mut command = Command::new(rclone_exe.to_str().unwrap().clone());
     command
         .arg(action.to_string().clone())
         .arg(job.source.to_str().unwrap().clone())

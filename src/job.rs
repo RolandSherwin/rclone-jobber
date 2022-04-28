@@ -1,7 +1,7 @@
-use crate::types::{Graceful, Job, StringError};
+use crate::types::{Graceful, Job, PathType, StringError};
 use crate::utils;
 use serde_yaml::Value;
-use std::{env, path::PathBuf, process};
+use std::{env, path::PathBuf};
 
 pub(crate) fn get_jobs(path: PathBuf) -> Vec<Job> {
     return _get_jobs(utils::read_yaml(path));
@@ -9,7 +9,7 @@ pub(crate) fn get_jobs(path: PathBuf) -> Vec<Job> {
 
 fn _get_jobs(file_contents: Value) -> Vec<Job> {
     let mut jobs: Vec<Job> = Vec::new();
-    for (i, job_data) in file_contents.as_mapping().unwrap().iter().enumerate() {
+    for job_data in file_contents.as_mapping().unwrap().iter() {
         // its a tuple of (Value, Value) eg ("job1", contents..) so get index 1 to
         let job_name = job_data.0.as_str().unwrap();
         let contents = serde_yaml::to_value(job_data.1).unwrap();
@@ -17,14 +17,22 @@ fn _get_jobs(file_contents: Value) -> Vec<Job> {
         let source = contents
             .get("source")
             .graceful(format!("'source' field not found for job: {}", job_name).as_str());
-        let source = extract_path_field(source)
-            .graceful(format!("reading 'source' of job: {}", job_name).as_str());
+        let source = match extract_path_field(source)
+            .graceful(format!("reading 'source' of job: {}", job_name).as_str())
+        {
+            PathType::Local(path) => path,
+            PathType::Remote(path) => path,
+        };
 
         let destination = contents
             .get("dest")
             .graceful(format!("'dest' field not found for job: {}", job_name).as_str());
-        let destination = extract_path_field(destination)
-            .graceful(format!("reading 'dest' of job: {}", job_name).as_str());
+        let destination = match extract_path_field(destination)
+            .graceful(format!("reading 'dest' of job: {}", job_name).as_str())
+        {
+            PathType::Local(path) => path,
+            PathType::Remote(path) => path,
+        };
 
         let options = contents
             .get("options")
@@ -38,10 +46,15 @@ fn _get_jobs(file_contents: Value) -> Vec<Job> {
                 println!("'log_path' not found for job: {}, skipping!", job_name);
                 None
             }
-            Some(val) => Some(
-                extract_path_field(val)
-                    .graceful(format!("reading 'dest' of job: {}", job_name).as_str()),
-            ),
+            Some(val) => {
+                match extract_path_field(val)
+                    .graceful(format!("reading 'dest' of job: {}", job_name).as_str())
+                {
+                    PathType::Local(path) => Some(path),
+                    // don't consider remote for log location
+                    PathType::Remote(_) => None,
+                }
+            }
         };
         let filters = match contents.get("filters") {
             None => {
@@ -73,15 +86,12 @@ fn _get_jobs(file_contents: Value) -> Vec<Job> {
             log_path,
             filters,
         };
-        println!("{:?}\n", job);
         jobs.push(job)
     }
     return jobs;
 }
 
-// need to make sure Remote is not present for log (do it in the caller)
-
-fn extract_path_field(val: &Value) -> Result<PathBuf, StringError> {
+fn extract_path_field(val: &Value) -> Result<PathType, StringError> {
     // extracts the PathFields present eg: source: -linux: /path/
     // can contain windows/linux together or remote alone.
     if let Some(remote) = val.get("remote") {
@@ -96,7 +106,7 @@ fn extract_path_field(val: &Value) -> Result<PathBuf, StringError> {
                 .as_str()
                 .graceful("cannot convert 'remote' Value to str"),
         );
-        return Ok(remote);
+        return Ok(PathType::Remote(remote));
     };
 
     match val.get(env::consts::OS) {
@@ -105,9 +115,9 @@ fn extract_path_field(val: &Value) -> Result<PathBuf, StringError> {
             let path = PathBuf::from(path);
             if path.exists() {
                 if env::consts::OS == "linux" {
-                    return Ok(path);
+                    return Ok(PathType::Local(path));
                 } else if env::consts::OS == "windows" {
-                    return Ok(path);
+                    return Ok(PathType::Local(path));
                 } else {
                     return Err(String::from("only works in linux or windows."));
                 }
