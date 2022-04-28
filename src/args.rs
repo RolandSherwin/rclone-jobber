@@ -1,4 +1,5 @@
-use crate::job::RcloneActions;
+use crate::types::RcloneActions;
+use crate::utils;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -17,24 +18,9 @@ pub(crate) struct Arguments {
     pub rclone_path: PathBuf,
 }
 
-fn validate_path(path: &PathBuf) {
-    if !path.is_absolute() {
-        panic!("Path: {:?} in not an absoulte path!", path);
-    }
-    if !path.exists() {
-        panic!("Path: {:?} does not exists", path);
-    }
-}
-fn validate_yaml(path: &PathBuf) {
-    validate_path(path);
-    if path.extension().unwrap() != "yaml" {
-        panic!("Path: {:?} is not a YAML file!", path);
-    }
-}
-
 pub(crate) fn get_args() -> Arguments {
     let args = Arguments::from_args();
-    validate_yaml(&args.yaml_path);
-    validate_path(&args.rclone_path);
+    utils::validate_yaml(&args.yaml_path);
+    utils::validate_path(&args.rclone_path);
     return args;
 }

@@ -2,11 +2,20 @@ job1:
     source:
         linux: /mnt/local-disk-d/New-Folder-2/
         windows: E:\New-Folder-2
-    dest: daily-backup-crypt:/new_folder_2/
+    dest:
+        remote: daily-backup-crypt:/new_folder_2/
     options: --fast-list -v --progress --transfers=30 --checkers=40 --copy-links
     log_path:
         windows: C:\Users\roland\Downloads\gg.txt
-        linux: /home/roland/Downloads/gg.txt
+        linux: /home/roland/Downloads/rclone-batcher-test/log.log
     filters:
         - "- Recovery/"
         - "+ Recovery/"
+job2:
+    source:
+        linux: /home/roland/Downloads/rclone-batcher-test/one one
+    dest:
+        linux: /home/roland/Downloads/rclone-batcher-test/two two
+    options: --fast-list -v --progress --transfers=30 --checkers=40 --copy-links
+    log_path:
+        linux: /home/roland/Downloads/rclone-batcher-test/log.log

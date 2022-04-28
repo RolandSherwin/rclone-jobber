@@ -1,5 +1,10 @@
-pub(crate) mod args;
-pub(crate) mod job;
+mod args;
+mod job;
+mod types;
+mod utils;
+
+use types::{Job, RcloneActions};
+
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::PathBuf;
@@ -20,12 +25,10 @@ fn main() {
     }
 }
 
-fn get_command(job: &job::Job, rclone_exe: &PathBuf, action: &job::RcloneActions) {
+fn get_command(job: &Job, rclone_exe: &PathBuf, action: &RcloneActions) {
     // let gg: std::string::String = String::new();
-    let mut command: std::process::Command = Command::new("cmd");
+    let mut command: std::process::Command = Command::new(rclone_exe.to_str().unwrap().clone());
     command
-        .arg("/C")
-        .arg(rclone_exe.to_str().unwrap().clone())
         .arg(action.to_string().clone())
         .arg(job.source.to_str().unwrap().clone())
         .arg(job.destination.to_str().unwrap().clone())
@@ -86,7 +89,7 @@ fn get_command(job: &job::Job, rclone_exe: &PathBuf, action: &job::RcloneActions
     println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
 }
 
-fn write_log_header(job: &job::Job, action: &job::RcloneActions) {
+fn write_log_header(job: &Job, action: &RcloneActions) {
     let path = job.log_path.as_ref().unwrap();
     let mut file = OpenOptions::new().append(true).open(path).unwrap();
     // .expect(&format!("Error opening log file at {}", path.to_str().unwrap())[..]);
