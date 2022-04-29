@@ -19,6 +19,6 @@ job2:
     options: --fast-list -v --progress --transfers=30 --checkers=40 --copy-links
     log_path:
         linux: /home/roland/Downloads/rclone-batcher-test/log.log
-    filters:
-            - "- Recovery/"
-            - "+ Recovery/"
+#    filters:
+#            - "- Recovery/"
+#            - "+ Recovery/"

@@ -33,13 +33,15 @@ fn _get_jobs(file_contents: Value) -> Vec<Job> {
             PathType::Local(path) => path,
             PathType::Remote(path) => path,
         };
-
-        let options = contents
+        let options: Vec<String> = contents
             .get("options")
             .graceful(format!("'options' field not found for job: {}", job_name).as_str())
             .as_str()
             .graceful("as_str while getting 'options'")
-            .to_string();
+            .split(" ")
+            .map(|ele| String::from(ele))
+            .filter(|ele| *ele != String::from(""))
+            .collect();
 
         let log_path = match contents.get("log_path") {
             None => {

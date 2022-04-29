@@ -38,7 +38,7 @@ impl<T, E: Display + Debug> Graceful for Result<T, E> {
 pub(crate) struct Job {
     pub source: PathBuf,
     pub destination: PathBuf,
-    pub options: String,
+    pub options: Vec<String>,
     pub log_path: Option<PathBuf>,
     pub filters: Option<Vec<String>>,
 }
