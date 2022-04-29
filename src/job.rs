@@ -60,7 +60,7 @@ fn _get_jobs(file_contents: Value) -> Vec<Job> {
         };
         let filters = match contents.get("filters") {
             None => {
-                println!("'filters' not found for job: {}, skipping!", job_name);
+                // println!("'filters' not found for job: {}, skipping!", job_name);
                 None
             }
             Some(vals) => {
@@ -72,7 +72,7 @@ fn _get_jobs(file_contents: Value) -> Vec<Job> {
                     opt.push(
                         val.as_str()
                             .graceful(
-                                format!("'filters' field is empty in job: {:?}", job_name).as_str(),
+                                format!("cannot get 'filters' field in job: {:?}", job_name).as_str(),
                             )
                             .to_string(),
                     );

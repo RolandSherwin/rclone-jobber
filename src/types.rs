@@ -80,13 +80,13 @@ impl Job {
             None
         }
     }
-    pub(crate) fn filters_str(&self) -> Option<String> {
-        if let Some(filters) = &self.filters {
-            Some(filters.join(" "))
-        } else {
-            None
-        }
-    }
+    // pub(crate) fn filters_str(&self) -> Option<String> {
+    //     if let Some(filters) = &self.filters {
+    //         Some(filters.join(" "))
+    //     } else {
+    //         None
+    //     }
+    // }
 }
 
 // To be used in StructOpt in args, we have to implement the trait FromStr for

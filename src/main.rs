@@ -30,8 +30,12 @@ fn get_command(job: &Job, rclone_exe: &PathBuf, action: &RcloneActions) {
         .into_iter()
         .filter(|ele| *ele != String::from(""))
         .collect::<Vec<String>>();
-    let filters = match job.filters_str() {
-        Some(fil) => vec![String::from("--filter-from"), fil],
+    let filters = match &job.filters {
+        Some(f) => f.into_iter().map(|fil|{
+            let mut op = String::from("--filter=");
+            op += fil.as_str();
+            op
+        }).collect::<Vec<String>>(),
         None => vec![String::new()],
     };
     let filters = filters
@@ -66,6 +70,5 @@ fn write_log_header(job: &Job, action: &RcloneActions) {
             job.destination_str()
         )[..];
         write!(file, "{}", header).graceful("cannot write to log file");
-        println!("Successfully wrote log header")
     }
 }
