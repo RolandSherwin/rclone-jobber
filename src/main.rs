@@ -85,7 +85,7 @@ fn write_log_header(job: &Job, action: &RcloneActions) {
         );
         let mut header = format!("\n\n_____________________________________________{}_____________________________________________", action.to_string());
         header += &format!(
-            "\nFROM: {}             TO: {}",
+            "\nFROM: {}             TO: {}\n",
             job.source_str(),
             job.destination_str()
         )[..];
@@ -111,7 +111,7 @@ fn get_logger(filename: &str) -> Handle {
     );
     let compound_policy = Box::new(CompoundPolicy::new(trigger, roller));
 
-    let log_location = String::from("logs/") + filename + ".log";
+    let log_location = String::from("logs/app/") + filename + ".log";
     let log_location = log_location.as_str();
     let root_ap = RollingFileAppender::builder()
         .encoder(Box::new(PatternEncoder::new(log_line_pattern)))

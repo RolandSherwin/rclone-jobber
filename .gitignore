@@ -3,3 +3,4 @@ target/
 .gitignore
 rclone-batcher
 logs/
+job_files/
