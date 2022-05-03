@@ -1,3 +1,4 @@
+use log::error;
 use std::fmt::{Debug, Display, Formatter};
 use std::{fmt, path::PathBuf, process, str::FromStr};
 
@@ -14,7 +15,9 @@ impl<T> Graceful for Option<T> {
         match self {
             Some(val) => val,
             None => {
-                println!("Error: {}", message);
+                let msg = format!("Error: {}", message);
+                error!("{}", msg);
+                println!("{}", msg);
                 process::exit(1);
             }
         }
@@ -27,7 +30,9 @@ impl<T, E: Display + Debug> Graceful for Result<T, E> {
         match self {
             Ok(val) => val,
             Err(err) => {
-                println!("Error: {}\nReason: {}", message, err);
+                let msg = format!("Error: {}\nReason: {}", message, err);
+                error!("{}", msg);
+                println!("{}", msg);
                 process::exit(1);
             }
         }

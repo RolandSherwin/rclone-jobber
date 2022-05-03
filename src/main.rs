@@ -5,6 +5,14 @@ mod utils;
 use types::{Job, RcloneActions};
 
 use crate::types::Graceful;
+use log::{debug, LevelFilter};
+use log4rs::append::rolling_file::policy::compound::roll::fixed_window::FixedWindowRoller;
+use log4rs::append::rolling_file::policy::compound::trigger::size::SizeTrigger;
+use log4rs::append::rolling_file::policy::compound::CompoundPolicy;
+use log4rs::append::rolling_file::RollingFileAppender;
+use log4rs::config::{Appender, Root};
+use log4rs::encode::pattern::PatternEncoder;
+use log4rs::{Config, Handle};
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::PathBuf;
@@ -12,6 +20,15 @@ use subprocess::Exec;
 
 fn main() {
     let arguments = args::get_args();
+
+    let file_name = arguments
+        .yaml_path
+        .file_stem()
+        .graceful("cannot get job.yaml file_name")
+        .to_str()
+        .graceful("cannot get job.yaml to str");
+    let handle = get_logger(file_name);
+
     let jobs = job::get_jobs(arguments.yaml_path);
     for job in jobs {
         if let Some(_) = job.log_path {
@@ -31,11 +48,14 @@ fn get_command(job: &Job, rclone_exe: &PathBuf, action: &RcloneActions) {
         .filter(|ele| *ele != String::from(""))
         .collect::<Vec<String>>();
     let filters = match &job.filters {
-        Some(f) => f.into_iter().map(|fil|{
-            let mut op = String::from("--filter=");
-            op += fil.as_str();
-            op
-        }).collect::<Vec<String>>(),
+        Some(f) => f
+            .into_iter()
+            .map(|fil| {
+                let mut op = String::from("--filter=");
+                op += fil.as_str();
+                op
+            })
+            .collect::<Vec<String>>(),
         None => vec![String::new()],
     };
     let filters = filters
@@ -55,7 +75,7 @@ fn get_command(job: &Job, rclone_exe: &PathBuf, action: &RcloneActions) {
     .args(&log_path)
     .args(&filters)
     .join();
-    println!("command {:?}", &command);
+    debug!("command {:?}", &command);
 }
 
 fn write_log_header(job: &Job, action: &RcloneActions) {
@@ -71,4 +91,41 @@ fn write_log_header(job: &Job, action: &RcloneActions) {
         )[..];
         write!(file, "{}", header).graceful("cannot write to log file");
     }
+}
+
+// Different logs for each job.yaml file.
+// https://medium.com/nikmas-group-rust/advanced-logging-in-rust-with-log4rs-2d712bb322de
+fn get_logger(filename: &str) -> Handle {
+    let log_line_pattern = "{d(%Y-%m-%d %H:%M:%S)} | {({l}):5.5} | {f}:{L} — {m}{n}";
+    let trigger = Box::new(SizeTrigger::new(10485760)); //10mb
+
+    let roller_pattern = String::from("logs/") + filename + "_{}.gz";
+    let roller_pattern = roller_pattern.as_str();
+    let roller_count = 3;
+    let roller_base = 1;
+    let roller = Box::new(
+        FixedWindowRoller::builder()
+            .base(roller_base)
+            .build(roller_pattern, roller_count)
+            .graceful("log4rs roller error"),
+    );
+    let compound_policy = Box::new(CompoundPolicy::new(trigger, roller));
+
+    let log_location = String::from("logs/") + filename + ".log";
+    let log_location = log_location.as_str();
+    let root_ap = RollingFileAppender::builder()
+        .encoder(Box::new(PatternEncoder::new(log_line_pattern)))
+        .build(log_location, compound_policy)
+        .graceful("log4rs root_ap error");
+
+    let config = Config::builder()
+        .appender(Appender::builder().build("my_root", Box::new(root_ap)))
+        .build(
+            Root::builder()
+                .appender("my_root")
+                .build(LevelFilter::Debug),
+        )
+        .graceful("log4rs config error");
+
+    log4rs::init_config(config).graceful("log4rs return error")
 }

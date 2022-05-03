@@ -9,3 +9,12 @@ edition = "2021"
 structopt = "0.3"
 serde_yaml = "0.8"
 subprocess = "0.2.8"
+log = "0.4"
+log4rs = {version="1.1.1", features = ["gzip"]}
+
+[profile.release]
+opt-level = 3     # Optimize for size.
+lto = true          # Enable Link Time Optimization
+codegen-units = 1   # Reduce number of codegen units to increase optimizations.
+panic = 'abort'     # Abort on panic
+strip = true        # Strip symbols from binary*

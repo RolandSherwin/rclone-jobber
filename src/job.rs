@@ -72,7 +72,8 @@ fn _get_jobs(file_contents: Value) -> Vec<Job> {
                     opt.push(
                         val.as_str()
                             .graceful(
-                                format!("cannot get 'filters' field in job: {:?}", job_name).as_str(),
+                                format!("cannot get 'filters' field in job: {:?}", job_name)
+                                    .as_str(),
                             )
                             .to_string(),
                     );
