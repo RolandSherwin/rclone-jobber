@@ -1,5 +1,9 @@
 HAVEN'T TRIED IN WINDOWS
 
+# Rclone Batcher
+Usage `./rclone-batcher --rclonePath /usr/bin/rclone --yamlPath /path/to/job_file.yaml --action check`
+
+
 ### YAML Structure
 ```
 # Name of the job, used in logging to logs/app
@@ -30,3 +34,4 @@ New-Folder-2:
         # exclude all should be the last filter
         - "- **"
 ```
+
