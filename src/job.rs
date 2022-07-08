@@ -1,12 +1,12 @@
 use crate::types::{Graceful, Job, PathType, StringError};
 use crate::utils;
-use serde_yaml::Value;
-use std::{env, path::PathBuf};
-use std::fs::File;
 use log::warn;
+use serde_yaml::Value;
+use std::fs::File;
+use std::{env, path::PathBuf};
 
 pub(crate) fn get_jobs(path: PathBuf) -> Vec<Job> {
-    return _get_jobs(utils::read_yaml(path));
+    _get_jobs(utils::read_yaml(path))
 }
 
 fn _get_jobs(file_contents: Value) -> Vec<Job> {
@@ -40,9 +40,9 @@ fn _get_jobs(file_contents: Value) -> Vec<Job> {
             .graceful(format!("'options' field not found for job: {}", job_name).as_str())
             .as_str()
             .graceful("as_str while getting 'options'")
-            .split(" ")
-            .map(|ele| String::from(ele))
-            .filter(|ele| *ele != String::from(""))
+            .split(' ')
+            .map(String::from)
+            .filter(|ele| ele.as_str() != "")
             .collect();
 
         let log_path = match contents.get("log_path") {
@@ -93,17 +93,14 @@ fn _get_jobs(file_contents: Value) -> Vec<Job> {
         };
         jobs.push(job)
     }
-    return jobs;
+    jobs
 }
 
 fn extract_path_field(val: &Value, create_file: bool) -> Result<PathType, StringError> {
     // extracts the PathFields present eg: source: -linux: /path/
     // can contain windows/linux together or remote alone.
     if let Some(remote) = val.get("remote") {
-        if let Some(_) = val.get("linux") {
-            return Err(String::from("'remote' can only exist alone."));
-        };
-        if let Some(_) = val.get("windows") {
+        if val.get("windows").is_some() || val.get("linux").is_some() {
             return Err(String::from("'remote' can only exist alone."));
         };
         let remote = PathBuf::from(
@@ -119,24 +116,21 @@ fn extract_path_field(val: &Value, create_file: bool) -> Result<PathType, String
             let path = path.as_str().graceful("cannot convert 'path' Value to str");
             let path = PathBuf::from(path);
             if path.exists() {
-                if env::consts::OS == "linux" {
-                    return Ok(PathType::Local(path));
-                } else if env::consts::OS == "windows" {
-                    return Ok(PathType::Local(path));
+                let os = env::consts::OS;
+                if os == "linux" || os == "windows" {
+                    Ok(PathType::Local(path))
                 } else {
-                    return Err(String::from("only works in linux or windows."));
+                    Err(String::from("only works in linux or windows."))
                 }
+            } else if create_file {
+                warn!("{}", format!("creating file at {:?}", path));
+                File::create(path.clone())
+                    .graceful(format!("while creating file at {:?}", path).as_str());
+                Ok(PathType::Local(path))
             } else {
-                if create_file{
-                    warn!("{}", format!("creating file at {:?}", path));
-                    File::create(path.clone()).graceful(format!("while creating file at {:?}", path).as_str());
-                    return Ok(PathType::Local(path));
-                }
-                else{
-                    return Err(format!("path {:?} does not exists.", path));
-                }
+                Err(format!("path {:?} does not exists.", path))
             }
         }
-        None => return Err(String::from("OS field not found or is empty.")),
-    };
+        None => Err(String::from("OS field not found or is empty.")),
+    }
 }

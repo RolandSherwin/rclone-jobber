@@ -22,5 +22,5 @@ pub(crate) fn get_args() -> Arguments {
     let args = Arguments::from_args();
     utils::validate_yaml(&args.yaml_path);
     utils::validate_path(&args.rclone_path);
-    return args;
+    args
 }

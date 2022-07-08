@@ -2,21 +2,22 @@ mod args;
 mod job;
 mod types;
 mod utils;
-use types::{Job, RcloneActions};
 
-use crate::types::Graceful;
 use log::{debug, LevelFilter};
-use log4rs::append::rolling_file::policy::compound::roll::fixed_window::FixedWindowRoller;
-use log4rs::append::rolling_file::policy::compound::trigger::size::SizeTrigger;
-use log4rs::append::rolling_file::policy::compound::CompoundPolicy;
-use log4rs::append::rolling_file::RollingFileAppender;
-use log4rs::config::{Appender, Root};
-use log4rs::encode::pattern::PatternEncoder;
-use log4rs::{Config, Handle};
-use std::fs::OpenOptions;
-use std::io::prelude::*;
-use std::path::PathBuf;
+use log4rs::append::rolling_file::{
+    policy::compound::{
+        roll::fixed_window::FixedWindowRoller, trigger::size::SizeTrigger, CompoundPolicy,
+    },
+    RollingFileAppender,
+};
+use log4rs::{
+    config::{Appender, Root},
+    encode::pattern::PatternEncoder,
+    Config, Handle,
+};
+use std::{fs::OpenOptions, io::prelude::*, path::Path};
 use subprocess::Exec;
+use types::{Graceful, Job, RcloneActions};
 
 fn main() {
     let arguments = args::get_args();
@@ -27,29 +28,29 @@ fn main() {
         .graceful("cannot get job.yaml file_name")
         .to_str()
         .graceful("cannot get job.yaml to str");
-    let handle = get_logger(file_name);
+    let _handle = get_logger(file_name);
 
     let jobs = job::get_jobs(arguments.yaml_path);
     for job in jobs {
-        if let Some(_) = job.log_path {
+        if job.log_path.is_some() {
             write_log_header(&job, &arguments.action);
         }
         get_command(&job, &arguments.rclone_path, &arguments.action);
     }
 }
 
-fn get_command(job: &Job, rclone_exe: &PathBuf, action: &RcloneActions) {
+fn get_command(job: &Job, rclone_exe: &Path, action: &RcloneActions) {
     let log_path: Vec<String> = match job.log_path_str() {
         Some(log) => vec![String::from("--log-file"), log],
         None => vec![String::new()], // filtered out in the line below
     };
     let log_path = log_path
         .into_iter()
-        .filter(|ele| *ele != String::from(""))
+        .filter(|ele| ele.as_str() != "")
         .collect::<Vec<String>>();
     let filters = match &job.filters {
         Some(f) => f
-            .into_iter()
+            .iter()
             .map(|fil| {
                 let mut op = String::from("--filter=");
                 op += fil.as_str();
@@ -60,7 +61,7 @@ fn get_command(job: &Job, rclone_exe: &PathBuf, action: &RcloneActions) {
     };
     let filters = filters
         .into_iter()
-        .filter(|ele| *ele != String::from(""))
+        .filter(|ele| ele.as_str() != "")
         .collect::<Vec<String>>();
 
     let command = Exec::cmd(
@@ -83,7 +84,7 @@ fn write_log_header(job: &Job, action: &RcloneActions) {
         let mut file = OpenOptions::new().append(true).open(path).graceful(
             format!("unable to open log file at {}", job.log_path_str().unwrap()).as_str(),
         );
-        let mut header = format!("\n\n_____________________________________________{}_____________________________________________", action.to_string());
+        let mut header = format!("\n\n_____________________________________________{}_____________________________________________", action);
         header += &format!(
             "\nFROM: {}             TO: {}\n",
             job.source_str(),

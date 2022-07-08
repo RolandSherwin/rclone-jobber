@@ -22,7 +22,6 @@ pub(crate) fn validate_yaml(path: &PathBuf) {
 }
 
 pub(crate) fn read_yaml(path: PathBuf) -> Value {
-    let file = File::open(path).graceful(format!("Unable to open file").as_str());
-    let contents = serde_yaml::from_reader(file).graceful("Unable to read YAML");
-    return contents;
+    let file = File::open(path).graceful("Unable to open file");
+    serde_yaml::from_reader(file).graceful("Unable to read YAML")
 }
