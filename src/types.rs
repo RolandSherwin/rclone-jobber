@@ -45,7 +45,7 @@ pub(crate) struct Job {
     pub destination: PathBuf,
     pub options: Vec<String>,
     pub log_path: Option<PathBuf>,
-    pub filters: Option<Vec<String>>,
+    pub tmp_filter_file: PathBuf,
 }
 
 pub(crate) enum PathType {

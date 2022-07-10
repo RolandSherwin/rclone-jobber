@@ -2,14 +2,17 @@ use crate::types::{Graceful, Job, PathType, StringError};
 use crate::utils;
 use log::warn;
 use serde_yaml::Value;
-use std::fs::File;
-use std::{env, path::PathBuf};
+use std::{
+    env, fs,
+    io::Write,
+    path::{Path, PathBuf},
+};
 
-pub(crate) fn get_jobs(path: PathBuf) -> Vec<Job> {
-    _get_jobs(utils::read_yaml(path))
+pub(crate) fn get_jobs(path: PathBuf, tmp_dir: &Path) -> Vec<Job> {
+    _get_jobs(utils::read_yaml(path), tmp_dir)
 }
 
-fn _get_jobs(file_contents: Value) -> Vec<Job> {
+fn _get_jobs(file_contents: Value, tmp_dir: &Path) -> Vec<Job> {
     let mut jobs: Vec<Job> = Vec::new();
     for job_data in file_contents.as_mapping().unwrap().iter() {
         // its a tuple of (Value, Value) eg ("job1", contents..) so get index 1 to
@@ -60,27 +63,22 @@ fn _get_jobs(file_contents: Value) -> Vec<Job> {
                 }
             }
         };
-        let filters = match contents.get("filters") {
-            None => {
-                // println!("'filters' not found for job: {}, skipping!", job_name);
-                None
-            }
-            Some(vals) => {
-                let mut opt = Vec::new();
-                for val in vals
-                    .as_sequence()
-                    .graceful(format!("'filters' field is empty in job: {:?}", job_name).as_str())
-                {
-                    opt.push(
-                        val.as_str()
-                            .graceful(
-                                format!("cannot get 'filters' field in job: {:?}", job_name)
-                                    .as_str(),
-                            )
-                            .to_string(),
-                    );
-                }
-                Some(opt)
+        let filters_path = tmp_dir.join(job_name);
+        let mut filters_file =
+            fs::File::create(&filters_path).graceful("Unable to create temp 'filter' file");
+        if let Some(vals) = contents.get("filters") {
+            for val in vals
+                .as_sequence()
+                .graceful(format!("'filters' field is empty in job: {:?}", job_name).as_str())
+            {
+                writeln!(
+                    filters_file,
+                    "{}",
+                    val.as_str().graceful(
+                        format!("cannot get 'filters' field in job: {:?}", job_name).as_str(),
+                    )
+                )
+                .graceful("Error writing to 'filters' file");
             }
         };
 
@@ -89,7 +87,7 @@ fn _get_jobs(file_contents: Value) -> Vec<Job> {
             destination,
             options,
             log_path,
-            filters,
+            tmp_filter_file: filters_path, // empty file if no filter is found
         };
         jobs.push(job)
     }
@@ -124,7 +122,7 @@ fn extract_path_field(val: &Value, create_file: bool) -> Result<PathType, String
                 }
             } else if create_file {
                 warn!("{}", format!("creating file at {:?}", path));
-                File::create(path.clone())
+                fs::File::create(path.clone())
                     .graceful(format!("while creating file at {:?}", path).as_str());
                 Ok(PathType::Local(path))
             } else {

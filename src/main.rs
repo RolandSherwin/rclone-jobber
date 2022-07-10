@@ -3,7 +3,7 @@ mod job;
 mod types;
 mod utils;
 
-use log::{debug, LevelFilter};
+use log::LevelFilter;
 use log4rs::append::rolling_file::{
     policy::compound::{
         roll::fixed_window::FixedWindowRoller, trigger::size::SizeTrigger, CompoundPolicy,
@@ -17,10 +17,13 @@ use log4rs::{
 };
 use std::{fs::OpenOptions, io::prelude::*, path::Path};
 use subprocess::Exec;
+use tempdir::TempDir;
 use types::{Graceful, Job, RcloneActions};
 
 fn main() {
     let arguments = args::get_args();
+
+    let tmp_dir = TempDir::new("rclone_batcher").graceful("Cannot create temporary folder!");
 
     let file_name = arguments
         .yaml_path
@@ -30,16 +33,14 @@ fn main() {
         .graceful("cannot get job.yaml to str");
     let _handle = get_logger(file_name);
 
-    let jobs = job::get_jobs(arguments.yaml_path);
+    let jobs = job::get_jobs(arguments.yaml_path, tmp_dir.path());
     for job in jobs {
-        if job.log_path.is_some() {
-            write_log_header(&job, &arguments.action);
-        }
-        get_command(&job, &arguments.rclone_path, &arguments.action);
+        write_log_header(&job, &arguments.action);
+        execute_command(&job, &arguments.rclone_path, &arguments.action);
     }
 }
 
-fn get_command(job: &Job, rclone_exe: &Path, action: &RcloneActions) {
+fn execute_command(job: &Job, rclone_exe: &Path, action: &RcloneActions) {
     let log_path: Vec<String> = match job.log_path_str() {
         Some(log) => vec![String::from("--log-file"), log],
         None => vec![String::new()], // filtered out in the line below
@@ -48,23 +49,13 @@ fn get_command(job: &Job, rclone_exe: &Path, action: &RcloneActions) {
         .into_iter()
         .filter(|ele| ele.as_str() != "")
         .collect::<Vec<String>>();
-    let filters = match &job.filters {
-        Some(f) => f
-            .iter()
-            .map(|fil| {
-                let mut op = String::from("--filter=");
-                op += fil.as_str();
-                op
-            })
-            .collect::<Vec<String>>(),
-        None => vec![String::new()],
-    };
-    let filters = filters
-        .into_iter()
-        .filter(|ele| ele.as_str() != "")
-        .collect::<Vec<String>>();
 
-    let command = Exec::cmd(
+    let filter_file = vec![
+        String::from("--filter-from"),
+        (&job.tmp_filter_file.display()).to_string(),
+    ];
+
+    Exec::cmd(
         rclone_exe
             .to_str()
             .graceful("can't convert rclone_exe to str"),
@@ -74,9 +65,9 @@ fn get_command(job: &Job, rclone_exe: &Path, action: &RcloneActions) {
     .arg(job.destination_str())
     .args(&job.options)
     .args(&log_path)
-    .args(&filters)
-    .join();
-    debug!("command {:?}", &command);
+    .args(&filter_file)
+    .join()
+    .graceful("error parsing command");
 }
 
 fn write_log_header(job: &Job, action: &RcloneActions) {
@@ -93,7 +84,6 @@ fn write_log_header(job: &Job, action: &RcloneActions) {
         write!(file, "{}", header).graceful("cannot write to log file");
     }
 }
-
 // Different logs for each job.yaml file.
 // https://medium.com/nikmas-group-rust/advanced-logging-in-rust-with-log4rs-2d712bb322de
 fn get_logger(filename: &str) -> Handle {

@@ -1,20 +1,21 @@
 use crate::types::RcloneActions;
 use crate::utils;
+use clap::Parser;
 use std::path::PathBuf;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "example", about = "An example of StructOpt usage.")]
+#[derive(Debug, Parser)]
+#[clap(name = "Rclone Batcher")]
 pub(crate) struct Arguments {
-    // Action to perform, ie check, copy, sync
-    #[structopt(short = "a", long = "action", default_value = "check")]
+    /// Action to perform, ie check, copy, sync
+    #[clap(short = 'a', long = "action", default_value = "check")]
     pub action: RcloneActions,
 
-    // Path to a job.json file
-    #[structopt(short = "y", long = "yamlPath", parse(from_os_str))]
+    /// Path to a job.json file
+    #[clap(short = 'y', long = "yamlPath", parse(from_os_str))]
     pub yaml_path: PathBuf,
 
-    #[structopt(short = "r", long = "rclonePath", parse(from_os_str))]
+    /// path to rclone binary
+    #[clap(short = 'r', long = "rclonePath", parse(from_os_str))]
     pub rclone_path: PathBuf,
 }
 
