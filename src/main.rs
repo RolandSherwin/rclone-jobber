@@ -17,10 +17,13 @@ use log4rs::{
 };
 use std::{fs::OpenOptions, io::prelude::*, path::Path};
 use subprocess::Exec;
+use tempdir::TempDir;
 use types::{Graceful, Job, RcloneActions};
 
 fn main() {
     let arguments = args::get_args();
+
+    let tmp_dir = TempDir::new("rclone_batcher").graceful("Cannot create temporary folder!");
 
     let file_name = arguments
         .yaml_path
@@ -30,7 +33,7 @@ fn main() {
         .graceful("cannot get job.yaml to str");
     let _handle = get_logger(file_name);
 
-    let jobs = job::get_jobs(arguments.yaml_path);
+    let jobs = job::get_jobs(arguments.yaml_path, tmp_dir.path());
     for job in jobs {
         if job.log_path.is_some() {
             write_log_header(&job, &arguments.action);
@@ -48,21 +51,11 @@ fn get_command(job: &Job, rclone_exe: &Path, action: &RcloneActions) {
         .into_iter()
         .filter(|ele| ele.as_str() != "")
         .collect::<Vec<String>>();
-    let filters = match &job.filters {
-        Some(f) => f
-            .iter()
-            .map(|fil| {
-                let mut op = String::from("--filter=");
-                op += fil.as_str();
-                op
-            })
-            .collect::<Vec<String>>(),
-        None => vec![String::new()],
-    };
-    let filters = filters
-        .into_iter()
-        .filter(|ele| ele.as_str() != "")
-        .collect::<Vec<String>>();
+
+    let filter_file = vec![
+        String::from("--filter-from"),
+        (&job.tmp_filter_file.display()).to_string(),
+    ];
 
     let command = Exec::cmd(
         rclone_exe
@@ -74,7 +67,7 @@ fn get_command(job: &Job, rclone_exe: &Path, action: &RcloneActions) {
     .arg(job.destination_str())
     .args(&job.options)
     .args(&log_path)
-    .args(&filters)
+    .args(&filter_file)
     .join();
     debug!("command {:?}", &command);
 }
